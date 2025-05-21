@@ -115,7 +115,7 @@
             border-radius: 12px;
             padding: 1.5rem;
             width: 90%;
-            max-width: 400px;
+            max-width: 800px;
             max-height: 80vh;
             overflow-y: auto;
             transform: translateY(20px);
@@ -179,49 +179,51 @@
     <div class="container mx-auto p-6">
         <div class="flex justify-between items-center mb-6 glass-effect p-4">
             <h1 class="text-2xl font-bold text-white">خوش آمدید، {{ username }}</h1>
-            <a href="/logout" class="glass-button bg-red-600 hover:bg-red-700 text-white">خروج</a>
+            <a href="{% url 'logout' %}" class="glass-button bg-red-600 hover:bg-red-700 text-white">خروج</a>
         </div>
         <div class="mb-6 glass-effect p-4">
-            <p class="text-gray-300">فضای استفاده‌شده: {{ "%.2f" % storage_used }} مگابایت از {{ "%.2f" % storage_limit }} مگابایت</p>
+            <p class="text-gray-300">فضای استفاده‌شده: {{ storage_used|floatformat:2 }} مگابایت از {{ storage_limit|floatformat:2 }} مگابایت</p>
             <div class="progress-bar mt-2">
-                <div style="width: {{ (storage_used / storage_limit * 100)|round(2) }}%"></div>
+                <div style="width: {{ storage_percentage|floatformat:2 }}%"></div>
             </div>
         </div>
         {% if folder_id %}
             <div class="mb-4 flex items-center gap-4">
-                <a href="{{ url_for('dashboard', folder_id=parent_folder_id) if parent_folder_id else url_for('dashboard') }}" 
+                <a href="{% if parent_folder_id %}{% url 'dashboard' %}?folder_id={{ parent_folder_id }}{% else %}{% url 'dashboard' %}{% endif %}" 
                    class="glass-button inline-flex items-center">
                     <i class="fas fa-arrow-right ml-2"></i> بازگشت
                 </a>
-                <span class="text-gray-300">پوشه: {{ folder_name or 'ناشناس' }}</span>
+                <span class="text-gray-300">پوشه: {{ folder_name|default:'ناشناس' }}</span>
             </div>
         {% endif %}
         <div class="flex flex-col sm:flex-row items-center mb-6 gap-4">
-            <form method="get" action="/search" class="flex-1">
+            <form method="get" action="{% url 'search' %}" class="flex-1">
                 <div class="relative">
-                    <input type="text" name="q" value="{{ query or '' }}" placeholder="جستجوی فایل‌ها و پوشه‌ها..." 
+                    <input type="text" name="q" value="{{ query|default:'' }}" placeholder="جستجوی فایل‌ها و پوشه‌ها..." 
                            class="w-full p-2 pr-10 rounded-lg bg-gray-800 text-white focus:outline-none glass-effect">
                     <i class="fas fa-search absolute right-3 top-2.5 text-gray-400"></i>
-                    <input type="hidden" name="folder_id" value="{{ folder_id or '' }}">
+                    <input type="hidden" name="folder_id" value="{{ folder_id|default:'' }}">
                     <input type="hidden" name="sort_by" value="{{ sort_by }}">
                     <input type="hidden" name="sort_order" value="{{ sort_order }}">
                 </div>
             </form>
-            <form method="post" action="/create_folder" class="flex items-center gap-2">
+            <form method="post" action="{% url 'create_folder' %}" class="flex items-center gap-2">
+                {% csrf_token %}
                 <input type="text" name="folder_name" placeholder="نام پوشه جدید" class="p-2 rounded-lg bg-gray-800 text-white glass-effect" required>
-                <input type="hidden" name="parent_folder_id" value="{{ folder_id or '' }}">
+                <input type="hidden" name="parent_folder_id" value="{{ folder_id|default:'' }}">
                 <button type="submit" class="glass-button">ایجاد پوشه</button>
             </form>
         </div>
         <div class="mb-6">
-            <form id="upload-form" method="post" enctype="multipart/form-data" action="/upload" 
+            <form id="upload-form" method="post" enctype="multipart/form-data" action="{% url 'upload' %}" 
                   class="glass-effect p-4 text-center rounded-lg"
                   ondragover="event.preventDefault(); this.classList.add('drag-over');"
                   ondragleave="this.classList.remove('drag-over');"
                   ondrop="event.preventDefault(); this.classList.remove('drag-over'); handleDrop(event);">
+                {% csrf_token %}
                 <input type="file" name="file" id="file-input" multiple class="hidden">
                 <input type="file" name="file" id="folder-input" multiple webkitdirectory class="hidden">
-                <input type="hidden" name="folder_id" value="{{ folder_id or '' }}">
+                <input type="hidden" name="folder_id" value="{{ folder_id|default:'' }}">
                 <p class="text-gray-300 mb-2">فایل‌ها یا پوشه‌ها را اینجا بکشید و رها کنید</p>
                 <div class="relative inline-block">
                     <button type="button" id="upload-button" class="glass-button">انتخاب فایل یا پوشه</button>
@@ -232,23 +234,21 @@
                 </div>
             </form>
         </div>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="mb-4 p-4 text-center glass-effect {{ 'bg-green-600' if category == 'success' else 'bg-red-600' }} rounded-lg text-white">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 text-center glass-effect {% if message.tags == 'success' %}bg-green-600{% else %}bg-red-600{% endif %} rounded-lg text-white">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
         <h2 class="text-xl font-bold text-white mb-4">پوشه‌ها و فایل‌ها</h2>
         <div class="flex justify-end mb-4 gap-2">
-            <a href="{{ url_for('dashboard', folder_id=folder_id, sort_by='original_filename', sort_order='asc' if sort_by == 'original_filename' and sort_order == 'desc' else 'desc') }}" 
-               class="glass-button text-sm">نام {{ '↑' if sort_by == 'original_filename' and sort_order == 'asc' else '↓' }}</a>
-            <a href="{{ url_for('dashboard', folder_id=folder_id, sort_by='created_at', sort_order='asc' if sort_by == 'created_at' and sort_order == 'desc' else 'desc') }}" 
-               class="glass-button text-sm">تاریخ {{ '↑' if sort_by == 'created_at' and sort_order == 'asc' else '↓' }}</a>
-            <a href="{{ url_for('dashboard', folder_id=folder_id, sort_by='size', sort_order='asc' if sort_by == 'size' and sort_order == 'desc' else 'desc') }}" 
-               class="glass-button text-sm">اندازه {{ '↑' if sort_by == 'size' and sort_order == 'asc' else '↓' }}</a>
+            <a href="{% url 'dashboard' %}?{% if folder_id %}folder_id={{ folder_id }}&{% endif %}sort_by=original_filename&sort_order={% if sort_by == 'original_filename' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+               class="glass-button text-sm">نام {{ sort_icon_name }}</a>
+            <a href="{% url 'dashboard' %}?{% if folder_id %}folder_id={{ folder_id }}&{% endif %}sort_by=created_at&sort_order={% if sort_by == 'created_at' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+               class="glass-button text-sm">تاریخ {{ sort_icon_date }}</a>
+            <a href="{% url 'dashboard' %}?{% if folder_id %}folder_id={{ folder_id }}&{% endif %}sort_by=size&sort_order={% if sort_by == 'size' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+               class="glass-button text-sm">اندازه {{ sort_icon_size }}</a>
         </div>
         {% if not folders and not files %}
             <div class="text-center text-gray-300 p-4 glass-effect rounded-lg">
@@ -257,41 +257,41 @@
         {% else %}
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {% for folder in folders %}
-                    <div class="folder-card glass-effect" data-id="{{ folder[0] }}" draggable="true" 
-                         ondragstart="dragFolder(event, {{ folder[0] }})" ondragover="event.preventDefault();" 
-                         ondrop="dropOnFolder(event, {{ folder[0] }})" 
-                         oncontextmenu="showContextMenu(event, {{ folder[0] }}, 'folder')"
-                         ontouchstart="handleTouchStart(event, {{ folder[0] }}, 'folder')"
+                    <div class="folder-card glass-effect" data-id="{{ folder.id }}" draggable="true" 
+                         ondragstart="dragFolder(event, {{ folder.id }})" ondragover="event.preventDefault();" 
+                         ondrop="dropOnFolder(event, {{ folder.id }})" 
+                         oncontextmenu="showContextMenu(event, {{ folder.id }}, 'folder')"
+                         ontouchstart="handleTouchStart(event, {{ folder.id }}, 'folder')"
                          ontouchend="handleTouchEnd(event)">
-                        <a href="{{ url_for('dashboard', folder_id=folder[0]) }}" class="flex flex-col items-center">
+                        <a href="{% url 'dashboard' %}?folder_id={{ folder.id }}" class="flex flex-col items-center">
                             <i class="fas fa-folder text-yellow-400 text-3xl mb-2"></i>
-                            <p class="font-semibold text-white">{{ folder[1] }}</p>
-                            <p class="text-sm text-gray-400">{{ folder[2] }}</p>
+                            <p class="font-semibold text-white">{{ folder.name }}</p>
+                            <p class="text-sm text-gray-400">{{ folder.created_at|date:"Y-m-d H:i:s" }}</p>
                         </a>
                         <div class="folder-actions flex">
-                            <button onclick="showRenameFolderModal({{ folder[0] }}, '{{ folder[1]|e }}')" class="text-purple-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
-                            <a href="{{ url_for('delete_folder', folder_id=folder[0]) }}" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></a>
+                            <button onclick="showRenameFolderModal({{ folder.id }}, '{{ folder.name|escapejs }}')" class="text-purple-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
+                            <a href="{% url 'delete_folder' folder.id %}" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></a>
                         </div>
                     </div>
                 {% endfor %}
                 {% for file in files %}
-                    <div class="file-card glass-effect" data-id="{{ file[0] }}" draggable="true" 
-                         ondragstart="dragFile(event, {{ file[0] }})" 
-                         oncontextmenu="showContextMenu(event, {{ file[0] }}, 'file')"
-                         ontouchstart="handleTouchStart(event, {{ file[0] }}, 'file')"
+                    <div class="file-card glass-effect" data-id="{{ file.id }}" draggable="true" 
+                         ondragstart="dragFile(event, {{ file.id }})" 
+                         oncontextmenu="showContextMenu(event, {{ file.id }}, 'file')"
+                         ontouchstart="handleTouchStart(event, {{ file.id }}, 'file')"
                          ontouchend="handleTouchEnd(event)">
                         <div class="flex flex-col items-center">
-                            <i class="fas {{ 'fa-image' if file[1].endswith(('.jpg', '.jpeg', '.png', '.gif')) else 'fa-file-video' if file[1].endswith(('.mp4', '.webm')) else 'fa-file' }} text-blue-400 text-3xl mb-2"></i>
-                            <p class="font-semibold text-white">{{ file[1] }}</p>
-                            <p class="text-sm text-gray-400">{{ "%.2f" % (file[2] / 1024 / 1024) }} مگابایت</p>
-                            <p class="text-sm text-gray-400">{{ file[3] }}</p>
+                            <i class="fas {% if file.original_filename|lower|slice:'-4:' in '.jpg,.jpeg,.png,.gif' %}fa-image{% elif file.original_filename|lower|slice:'-4:' in '.mp4,.webm' %}fa-file-video{% else %}fa-file{% endif %} text-blue-400 text-3xl mb-2"></i>
+                            <p class="font-semibold text-white">{{ file.original_filename }}</p>
+                            <p class="text-sm text-gray-400">{{ file.size_mb|floatformat:2 }} مگابایت</p>
+                            <p class="text-sm text-gray-400">{{ file.created_at|date:"Y-m-d H:i:s" }}</p>
                         </div>
                         <div class="file-actions flex">
-                            <a href="{{ url_for('download_file', file_id=file[0]) }}" class="text-blue-400 hover:text-blue-600"><i class="fas fa-download"></i></a>
-                            <button onclick="previewFile({{ file[0] }})" class="text-green-400 hover:text-green-600"><i class="fas fa-eye"></i></button>
-                            <button onclick="shareFile({{ file[0] }})" class="text-yellow-400 hover:text-yellow-600"><i class="fas fa-share"></i></button>
-                            <button onclick="showRenameModal({{ file[0] }}, '{{ file[1]|e }}', '{{ file[4] or '' }}')" class="text-purple-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
-                            <a href="{{ url_for('delete_file', file_id=file[0]) }}" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></a>
+                            <a href="{% url 'download_file' file.id %}" class="text-blue-400 hover:text-blue-600"><i class="fas fa-download"></i></a>
+                            <button onclick="previewFile({{ file.id }})" class="text-green-400 hover:text-green-600"><i class="fas fa-eye"></i></button>
+                            <button onclick="shareFile({{ file.id }})" class="text-yellow-400 hover:text-yellow-600"><i class="fas fa-share"></i></button>
+                            <button onclick="showRenameModal({{ file.id }}, '{{ file.original_filename|escapejs }}', '{{ folder_id|default:'' }}')" class="text-purple-400 hover:text-purple-600"><i class="fas fa-edit"></i></button>
+                            <a href="{% url 'delete_file' file.id %}" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></a>
                         </div>
                     </div>
                 {% endfor %}
@@ -300,7 +300,8 @@
         <div id="rename-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-30">
             <div class="modal-content" onclick="event.stopPropagation()">
                 <h3 class="text-lg font-bold mb-4 text-white">تغییر نام فایل</h3>
-                <form id="rename-form" method="post" onsubmit="handleRenameSubmit(event)">
+                <form id="rename-form" method="post" action="" onsubmit="handleRenameSubmit(event)">
+                    {% csrf_token %}
                     <input type="hidden" name="file_id" id="rename-file-id">
                     <input type="hidden" name="folder_id" id="rename-folder-id">
                     <input type="text" name="new_name" id="rename-file-name" class="w-full p-2 rounded-lg bg-gray-800 text-white glass-effect mb-4" required>
@@ -312,7 +313,8 @@
         <div id="rename-folder-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-30">
             <div class="modal-content" onclick="event.stopPropagation()">
                 <h3 class="text-lg font-bold mb-4 text-white">تغییر نام پوشه</h3>
-                <form id="rename-folder-form" method="post">
+                <form id="rename-folder-form" method="post" action="">
+                    {% csrf_token %}
                     <input type="hidden" name="folder_id" id="rename-folder-id">
                     <input type="text" name="new_name" id="rename-folder-name" class="w-full p-2 rounded-lg bg-gray-800 text-white glass-effect mb-4" required>
                     <button type="submit" class="glass-button">تغییر نام</button>
@@ -339,7 +341,7 @@
         let currentFileId = null;
         let currentType = null;
         let touchTimer = null;
-        const LONG_PRESS_DURATION = 500; // 500ms for long press
+        const LONG_PRESS_DURATION = 500;
 
         gsap.from("h1, .file-card, .folder-card", { duration: 1, y: 50, opacity: 0, stagger: 0.1, ease: "power2.out" });
         gsap.from(".progress-bar div", { duration: 1, width: 0, ease: "power2.out", delay: 0.5 });
@@ -349,23 +351,26 @@
         const folderInput = document.getElementById('folder-input');
         const uploadButton = document.getElementById('upload-button');
         const uploadMenu = document.getElementById('upload-menu');
+        const contextMenu = document.getElementById('context-menu');
+        const renameModal = document.getElementById('rename-modal');
+        const renameFolderModal = document.getElementById('rename-folder-modal');
+        const previewModal = document.getElementById('preview-modal');
 
-        // Toggle dropdown menu
         uploadButton.addEventListener('click', (e) => {
             e.preventDefault();
             uploadMenu.classList.toggle('hidden');
         });
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!uploadButton.contains(e.target) && !uploadMenu.contains(e.target)) {
                 uploadMenu.classList.add('hidden');
             }
+            if (!contextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
         });
 
-        // Handle file/folder selection
         fileInput.addEventListener('change', () => {
-            console.log('Files selected:', fileInput.files);
             if (fileInput.files.length > 0) {
                 uploadForm.submit();
             } else {
@@ -374,7 +379,6 @@
         });
 
         folderInput.addEventListener('change', () => {
-            console.log('Folder selected:', folderInput.files);
             if (folderInput.files.length > 0) {
                 uploadForm.submit();
             } else {
@@ -387,12 +391,11 @@
             event.stopPropagation();
             uploadForm.classList.remove('drag-over');
             const files = event.dataTransfer.files;
-            console.log('Files dropped:', files);
             if (files.length === 0) {
                 alert('هیچ فایلی انتخاب نشده است!');
                 return;
             }
-            fileInput.files = files; // Use fileInput for drag-and-drop
+            fileInput.files = files;
             uploadForm.submit();
         }
 
@@ -409,218 +412,199 @@
             const fileId = event.dataTransfer.getData('file_id');
             if (fileId) {
                 try {
-                    const response = await fetch(`/move_file/${fileId}/${folderId}`, { method: 'POST' });
+                    const response = await fetch(`/move_file/${fileId}/${folderId}/`, {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken(),
+                        },
+                    });
                     const data = await response.json();
-                    alert(data.message || 'خطا در جابه‌جایی فایل!');
-                    location.reload();
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        location.reload();
+                    }
                 } catch (error) {
-                    console.error('Error moving file:', error);
-                    alert('خطا در جابه‌جایی فایل!');
+                    alert('خطایی رخ داد!');
                 }
             }
         }
 
-        function showRenameModal(fileId, fileName, folderId) {
-            console.log(`Opening rename modal for fileId=${fileId}, fileName=${fileName}, folderId=${folderId}`);
-            document.getElementById('rename-file-id').value = fileId;
-            document.getElementById('rename-folder-id').value = folderId;
-            document.getElementById('rename-file-name').value = fileName;
-            document.getElementById('rename-form').action = `/rename/${fileId}`;
-            const modal = document.getElementById('rename-modal');
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.querySelector('.modal-content').classList.add('show'), 10);
-        }
-
-        function hideRenameModal() {
-            console.log('Hiding rename modal');
-            const modal = document.getElementById('rename-modal');
-            gsap.to(modal.querySelector('.modal-content'), { 
-                duration: 0.3, 
-                scale: 0.8, 
-                opacity: 0, 
-                ease: "power2.out", 
-                onComplete: () => {
-                    modal.classList.add('hidden');
-                    modal.querySelector('.modal-content').classList.remove('show');
-                }
-            });
-        }
-
-        function handleRenameSubmit(event) {
-            console.log('Submitting rename form');
-            // Form will submit normally, no need to preventDefault
-        }
-
-        function showRenameFolderModal(folderId, folderName) {
-            console.log(`Opening rename folder modal for folderId=${folderId}, folderName=${folderName}`);
-            document.getElementById('rename-folder-id').value = folderId;
-            document.getElementById('rename-folder-name').value = folderName;
-            document.getElementById('rename-folder-form').action = `/rename_folder/${folderId}`;
-            const modal = document.getElementById('rename-folder-modal');
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.querySelector('.modal-content').classList.add('show'), 10);
-        }
-
-        function hideRenameFolderModal() {
-            console.log('Hiding rename folder modal');
-            const modal = document.getElementById('rename-folder-modal');
-            gsap.to(modal.querySelector('.modal-content'), { 
-                duration: 0.3, 
-                scale: 0.8, 
-                opacity: 0, 
-                ease: "power2.out", 
-                onComplete: () => {
-                    modal.classList.add('hidden');
-                    modal.querySelector('.modal-content').classList.remove('show');
-                }
-            });
-        }
-
-        async function previewFile(fileId) {
-            console.log(`Attempting to preview fileId=${fileId}`);
-            try {
-                const response = await fetch(`/preview/${fileId}`);
-                const data = await response.json();
-                if (data.error) {
-                    console.error('Preview error:', data.error);
-                    alert(data.error);
-                    return;
-                }
-                console.log('Preview data:', data);
-                const modal = document.getElementById('preview-modal');
-                const content = document.getElementById('preview-content');
-                document.getElementById('preview-filename').textContent = data.filename;
-                if (data.mime_type.startsWith('image')) {
-                    content.innerHTML = `<img src="${data.url}" alt="${data.filename}" style="max-width:100%;max-height:80vh;">`;
-                } else if (data.mime_type.startsWith('video')) {
-                    content.innerHTML = `<video controls style="max-width:100%;max-height:80vh;"><source src="${data.url}" type="${data.mime_type}"></video>`;
-                } else {
-                    content.innerHTML = '<p class="text-gray-300">پیش‌نمایش برای این نوع فایل پشتیبانی نمی‌شود.</p>';
-                }
-                modal.classList.remove('hidden');
-                setTimeout(() => modal.querySelector('.modal-content').classList.add('show'), 10);
-            } catch (error) {
-                console.error('Preview fetch error:', error);
-                alert('خطا در نمایش پیش‌نمایش!');
-            }
-        }
-
-        function hidePreviewModal() {
-            console.log('Hiding preview modal');
-            const modal = document.getElementById('preview-modal');
-            gsap.to(modal.querySelector('.modal-content'), { 
-                duration: 0.3, 
-                scale: 0.8, 
-                opacity: 0, 
-                ease: "power2.out", 
-                onComplete: () => {
-                    modal.classList.add('hidden');
-                    modal.querySelector('.modal-content').classList.remove('show');
-                    document.getElementById('preview-content').innerHTML = '';
-                }
-            });
-        }
-
-        async function shareFile(fileId) {
-            console.log(`Attempting to share fileId=${fileId}`);
-            try {
-                const response = await fetch(`/share/${fileId}`);
-                const data = await response.json();
-                if (data.share_link) {
-                    prompt("لینک اشتراک‌گذاری:", data.share_link);
-                } else {
-                    console.error('Share error:', data.error);
-                    alert("خطا در ایجاد لینک اشتراک‌گذاری!");
-                }
-            } catch (error) {
-                console.error('Share fetch error:', error);
-                alert('خطا در اشتراک‌گذاری!');
-            }
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
         }
 
         function showContextMenu(event, id, type) {
             event.preventDefault();
-            console.log(`Showing context menu for id=${id}, type=${type}`);
             currentFileId = id;
             currentType = type;
-            const menu = document.getElementById('context-menu');
-            menu.style.top = `${event.pageY || event.changedTouches[0].pageY}px`;
-            menu.style.left = `${event.pageX || event.changedTouches[0].pageX}px`;
-            menu.style.display = 'block';
-            document.addEventListener('click', hideContextMenu);
-            document.addEventListener('touchstart', hideContextMenu);
+            contextMenu.style.display = 'block';
+            contextMenu.style.top = `${event.clientY}px`;
+            contextMenu.style.left = `${event.clientX}px`;
+            if (type === 'folder') {
+                contextMenu.children[0].style.display = 'none'; // Hide download
+                contextMenu.children[1].style.display = 'none'; // Hide preview
+                contextMenu.children[2].style.display = 'none'; // Hide share
+            } else {
+                contextMenu.children[0].style.display = 'block';
+                contextMenu.children[1].style.display = 'block';
+                contextMenu.children[2].style.display = 'block';
+            }
         }
 
         function hideContextMenu() {
-            console.log('Hiding context menu');
-            document.getElementById('context-menu').style.display = 'none';
-            document.removeEventListener('click', hideContextMenu);
-            document.removeEventListener('touchstart', hideContextMenu);
+            contextMenu.style.display = 'none';
+            currentFileId = null;
+            currentType = null;
         }
 
         function handleTouchStart(event, id, type) {
-            console.log(`Touch start for id=${id}, type=${type}`);
-            const target = event.currentTarget;
             touchTimer = setTimeout(() => {
-                target.classList.add('active');
                 showContextMenu(event, id, type);
             }, LONG_PRESS_DURATION);
         }
 
         function handleTouchEnd(event) {
-            console.log('Touch end');
             clearTimeout(touchTimer);
-            // Remove active class from all cards after a short delay
-            setTimeout(() => {
-                document.querySelectorAll('.file-card, .folder-card').forEach(card => {
-                    card.classList.remove('active');
-                });
-            }, 2000); // Hide actions after 2 seconds
         }
 
-        function contextAction(action) {
-            console.log(`Context action: ${action}, fileId=${currentFileId}, type=${currentType}`);
-            if (currentType === 'file') {
-                if (action === 'download') {
-                    window.location.href = `/download_file/${currentFileId}`;
-                } else if (action === 'preview') {
-                    previewFile(currentFileId);
-                } else if (action === 'share') {
-                    shareFile(currentFileId);
-                } else if (action === 'rename') {
-                    const fileName = document.querySelector(`.file-card[data-id="${currentFileId}"] p.font-semibold`).textContent;
-                    showRenameModal(currentFileId, fileName, '');
-                } else if (action === 'delete') {
-                    window.location.href = `/delete/${currentFileId}`;
-                }
-            } else if (currentType === 'folder') {
-                if (action === 'rename') {
-                    const folderName = document.querySelector(`.folder-card[data-id="${currentFileId}"] p.font-semibold`).textContent;
+        async function contextAction(action) {
+            if (!currentFileId || !currentType) return;
+            if (action === 'download' && currentType === 'file') {
+                window.location.href = `/download_file/${currentFileId}/`;
+            } else if (action === 'preview' && currentType === 'file') {
+                previewFile(currentFileId);
+            } else if (action === 'share' && currentType === 'file') {
+                shareFile(currentFileId);
+            } else if (action === 'rename') {
+                if (currentType === 'file') {
+                    const fileCard = document.querySelector(`.file-card[data-id="${currentFileId}"]`);
+                    const fileName = fileCard.querySelector('p.font-semibold').textContent;
+                    showRenameModal(currentFileId, fileName, '{{ folder_id|default:'' }}');
+                } else {
+                    const folderCard = document.querySelector(`.folder-card[data-id="${currentFileId}"]`);
+                    const folderName = folderCard.querySelector('p.font-semibold').textContent;
                     showRenameFolderModal(currentFileId, folderName);
-                } else if (action === 'delete') {
-                    window.location.href = `/delete_folder/${currentFileId}`;
                 }
+            } else if (action === 'delete') {
+                if (confirm('آیا مطمئن هستید که می‌خواهید حذف کنید؟')) {
+                    window.location.href = currentType === 'file' ? `/delete/${currentFileId}/` : `/delete_folder/${currentFileId}/`;
+                }
+            }
+            hideContextMenu();
+        }
+
+        function showRenameModal(fileId, fileName, folderId) {
+            renameModal.classList.remove('hidden');
+            document.getElementById('rename-file-id').value = fileId;
+            document.getElementById('rename-file-name').value = fileName;
+            document.getElementById('rename-folder-id').value = folderId;
+            document.getElementById('rename-form').action = `/rename/${fileId}/`;
+            setTimeout(() => {
+                renameModal.querySelector('.modal-content').classList.add('show');
+            }, 10);
+        }
+
+        function hideRenameModal() {
+            renameModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                renameModal.classList.add('hidden');
+            }, 300);
+        }
+
+        function showRenameFolderModal(folderId, folderName) {
+            renameFolderModal.classList.remove('hidden');
+            document.getElementById('rename-folder-id').value = folderId;
+            document.getElementById('rename-folder-name').value = folderName;
+            document.getElementById('rename-folder-form').action = `/rename_folder/${folderId}/`;
+            setTimeout(() => {
+                renameFolderModal.querySelector('.modal-content').classList.add('show');
+            }, 10);
+        }
+
+        function hideRenameFolderModal() {
+            renameFolderModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                renameFolderModal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function previewFile(fileId) {
+            try {
+                const response = await fetch(`/preview/${fileId}/`);
+                const data = await response.json();
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                previewModal.classList.remove('hidden');
+                document.getElementById('preview-filename').textContent = data.filename;
+                const previewContent = document.getElementById('preview-content');
+                previewContent.innerHTML = '';
+                if (data.mime_type.startsWith('image/')) {
+                    previewContent.innerHTML = `<img src="${data.url}" alt="${data.filename}">`;
+                } else if (data.mime_type.startsWith('video/')) {
+                    previewContent.innerHTML = `<video controls><source src="${data.url}" type="${data.mime_type}"></video>`;
+                } else {
+                    previewContent.innerHTML = '<p>پیش‌نمایش برای این نوع فایل در دسترس نیست.</p>';
+                }
+                setTimeout(() => {
+                    previewModal.querySelector('.modal-content').classList.add('show');
+                }, 10);
+            } catch (error) {
+                alert('خطایی رخ داد!');
             }
         }
 
-        // Prevent modal from closing when clicking inside it
-        document.getElementById('rename-modal').addEventListener('click', (e) => {
-            if (!e.target.closest('.modal-content')) {
-                hideRenameModal();
-            }
-        });
+        function hidePreviewModal() {
+            previewModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                previewModal.classList.add('hidden');
+                document.getElementById('preview-content').innerHTML = '';
+            }, 300);
+        }
 
-        document.getElementById('rename-folder-modal').addEventListener('click', (e) => {
-            if (!e.target.closest('.modal-content')) {
-                hideRenameFolderModal();
+        async function shareFile(fileId) {
+            try {
+                const response = await fetch(`/share/${fileId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                });
+                const data = await response.json();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    prompt('لینک اشتراک:', data.share_link);
+                }
+            } catch (error) {
+                alert('خطایی رخ داد!');
             }
-        });
+        }
 
-        document.getElementById('preview-modal').addEventListener('click', (e) => {
-            if (!e.target.closest('.modal-content')) {
-                hidePreviewModal();
-            }
-        });
+        function handleRenameSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                },
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('خطایی رخ داد!');
+                }
+            }).catch(() => {
+                alert('خطایی رخ داد!');
+            });
+        }
+
+        document.getElementById('rename-folder-form').addEventListener('submit', handleRenameSubmit);
     </script>
 </body>
 </html>
