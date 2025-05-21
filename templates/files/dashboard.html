@@ -1,0 +1,296 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فضای ابری</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{% static 'js/context_menu.js' %}"></script>
+    {% load static %}
+    <style>
+        .form-container {
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-animated {
+            transition: all 0.3s ease;
+        }
+        .btn-animated:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .item {
+            transition: all 0.2s ease;
+        }
+        .item:hover {
+            transform: translateY(-2px);
+        }
+        .drop-target {
+            border: 2px dashed #ccc;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        #rename-modal {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 p-6">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">فضای ابری {{ request.user.username }}</h1>
+            <div class="flex space-x-2">
+                <button id="back-button" class="bg-gray-500 text-white p-2 rounded btn-animated hidden">بازگشت</button>
+                <a href="{% url 'account_logout' %}" class="bg-red-500 text-white p-2 rounded btn-animated">خروج</a>
+            </div>
+        </div>
+        <p id="storage-info" class="mb-4"></p>
+        <div id="error-message" class="text-red-500 hidden mb-4"></div>
+        
+        <div class="mb-4 flex space-x-4">
+            <form id="upload-form" enctype="multipart/form-data" class="flex space-x-2">
+                {% csrf_token %}
+                <input type="file" name="file" class="p-2 border rounded">
+                <input type="hidden" name="parent_id" id="parent-id-input">
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded btn-animated">آپلود</button>
+            </form>
+            <form id="folder-form" class="flex space-x-2">
+                {% csrf_token %}
+                <input type="text" name="folder_name" placeholder="نام پوشه" class="p-2 border rounded">
+                <input type="hidden" name="parent_id" id="folder-parent-id-input">
+                <button type="submit" class="bg-green-500 text-white p-2 rounded btn-animated">ایجاد پوشه</button>
+            </form>
+            <button onclick="sortItems()" class="bg-gray-500 text-white p-2 rounded btn-animated">مرتب‌سازی</button>
+        </div>
+
+        <div id="items" class="grid grid-cols-3 gap-4"></div>
+
+        <div id="context-menu" class="hidden absolute bg-white border rounded shadow-lg z-10">
+            <ul>
+                <li class="context-item px-4 py-2 hover:bg-gray-100 cursor-pointer" data-action="download">دانلود</li>
+                <li class="context-item px-4 py-2 hover:bg-gray-100 cursor-pointer" data-action="delete">حذف</li>
+                <li class="context-item px-4 py-2 hover:bg-gray-100 cursor-pointer" data-action="rename">تغییر نام</li>
+            </ul>
+        </div>
+
+        <div id="rename-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-lg font-bold mb-4">تغییر نام</h2>
+                <form id="rename-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="item_id" id="rename-item-id">
+                    <input type="text" name="new_name" id="rename-input" placeholder="نام جدید" class="p-2 border rounded w-full mb-4">
+                    <div class="flex space-x-2">
+                        <button type="submit" class="bg-blue-500 text-white p-2 rounded btn-animated">تأیید</button>
+                        <button type="button" onclick="closeRenameModal()" class="bg-gray-500 text-white p-2 rounded btn-animated">لغو</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentParentId = null;
+        let folderStack = [];
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function loadItems(parentId = null) {
+            currentParentId = parentId;
+            const url = parentId ? `/files/api/?parent_id=${parentId}` : '/files/api/';
+            const response = await fetch(url);
+            const data = await response.json();
+            const itemsDiv = document.getElementById('items');
+            itemsDiv.innerHTML = '';
+            data.items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.dataset.id = item.id;
+                itemDiv.dataset.type = item.type;
+                itemDiv.draggable = true;
+                itemDiv.innerHTML = `<div class="p-4 border rounded hover:bg-gray-100">${item.name} (${item.type})</div>`;
+                itemDiv.addEventListener('dragstart', handleDragStart);
+                if (item.type === 'folder') {
+                    itemDiv.addEventListener('dragover', handleDragOver);
+                    itemDiv.addEventListener('drop', handleDrop);
+                    itemDiv.addEventListener('dblclick', () => openFolder(item.id));
+                }
+                itemsDiv.appendChild(itemDiv);
+            });
+            document.getElementById('storage-info').innerText = `فضای استفاده‌شده: ${formatBytes(data.storage_used)} از ${formatBytes(data.storage_limit)}`;
+            document.getElementById('parent-id-input').value = parentId || '';
+            document.getElementById('folder-parent-id-input').value = parentId || '';
+            const backButton = document.getElementById('back-button');
+            if (parentId) {
+                backButton.classList.remove('hidden');
+            } else {
+                backButton.classList.add('hidden');
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function openFolder(folderId) {
+            folderStack.push(currentParentId);
+            loadItems(folderId);
+        }
+
+        function goBack() {
+            const previousParentId = folderStack.pop();
+            loadItems(previousParentId);
+        }
+
+        document.getElementById('back-button').addEventListener('click', goBack);
+
+        let draggedItemId = null;
+
+        function handleDragStart(e) {
+            draggedItemId = e.target.dataset.id;
+            e.dataTransfer.setData('text/plain', draggedItemId);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.closest('.item').classList.add('drop-target');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const folderId = e.target.closest('.item').dataset.id;
+            e.target.closest('.item').classList.remove('drop-target');
+            moveItem(draggedItemId, folderId);
+        }
+
+        async function moveItem(itemId, folderId) {
+            const response = await fetch('/files/api/move/', {
+                method: 'POST',
+                body: JSON.stringify({ item_id: itemId, folder_id: folderId }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const data = await response.json();
+            const errorDiv = document.getElementById('error-message');
+            if (data.error) {
+                errorDiv.innerText = data.error;
+                errorDiv.classList.remove('hidden');
+            } else {
+                errorDiv.classList.add('hidden');
+                loadItems(currentParentId);
+            }
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('/files/api/upload/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const data = await response.json();
+            const errorDiv = document.getElementById('error-message');
+            if (data.error) {
+                errorDiv.innerText = data.error;
+                errorDiv.classList.remove('hidden');
+            } else {
+                errorDiv.classList.add('hidden');
+                loadItems(currentParentId);
+            }
+        });
+
+        document.getElementById('folder-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('/files/api/create_folder/', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    folder_name: formData.get('folder_name'),
+                    parent_id: formData.get('parent_id')
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const data = await response.json();
+            const errorDiv = document.getElementById('error-message');
+            if (data.error) {
+                errorDiv.innerText = data.error;
+                errorDiv.classList.remove('hidden');
+            } else {
+                errorDiv.classList.add('hidden');
+                loadItems(currentParentId);
+            }
+        });
+
+        function openRenameModal(itemId, currentName) {
+            document.getElementById('rename-item-id').value = itemId;
+            document.getElementById('rename-input').value = currentName;
+            document.getElementById('rename-modal').classList.remove('hidden');
+        }
+
+        function closeRenameModal() {
+            document.getElementById('rename-modal').classList.add('hidden');
+        }
+
+        document.getElementById('rename-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('/files/api/rename/', {
+                method: 'POST',
+                body: JSON.stringify({
+                    item_id: formData.get('item_id'),
+                    new_name: formData.get('new_name')
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const data = await response.json();
+            const errorDiv = document.getElementById('error-message');
+            if (data.error) {
+                errorDiv.innerText = data.error;
+                errorDiv.classList.remove('hidden');
+            } else {
+                errorDiv.classList.add('hidden');
+                closeRenameModal();
+                loadItems(currentParentId);
+            }
+        });
+
+        function sortItems() {
+            alert('مرتب‌سازی انجام شد!');
+            loadItems(currentParentId);
+        }
+
+        loadItems();
+    </script>
+</body>
+</html>

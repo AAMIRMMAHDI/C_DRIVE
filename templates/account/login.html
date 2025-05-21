@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .form-container {
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-animated {
+            transition: all 0.3s ease;
+        }
+        .btn-animated:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-300 via-purple-200 to-pink-200 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-2xl form-container max-w-md w-full">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-700 animate-pulse">ورود به فضای ابری</h1>
+        {% if error %}
+            <p class="text-red-500 text-center mb-4">{{ error }}</p>
+        {% endif %}
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="login" class="block text-gray-700 font-semibold mb-2">نام کاربری</label>
+                <input type="text" name="login" id="login" class="w-full p-3 border rounded-lg focus:outline-none transition duration-300" placeholder="نام کاربری" required>
+            </div>
+            <div class="mb-4">
+                <label for="password" class="block text-gray-700 font-semibold mb-2">رمز عبور</label>
+                <input type="password" name="password" id="password" class="w-full p-3 border rounded-lg focus:outline-none transition duration-300" placeholder="رمز عبور" required>
+            </div>
+            <div class="mb-4 flex items-center">
+                <input type="checkbox" name="remember" id="remember" class="mr-2">
+                <label for="remember" class="text-gray-600">مرا به خاطر بسپار</label>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg btn-animated font-semibold">ورود</button>
+        </form>
+        <p class="mt-4 text-center">
+            <a href="{% url 'account_reset_password' %}" class="text-blue-500 hover:underline">رمز عبور خود را فراموش کرده‌اید؟</a>
+        </p>
+        <p class="mt-2 text-center">
+            <a href="/accounts/google/login/" class="bg-red-500 text-white p-3 rounded-lg btn-animated inline-block px-6 font-semibold">ورود با گوگل</a>
+        </p>
+        <p class="mt-2 text-center">
+            <a href="{% url 'account_signup' %}" class="text-blue-500 hover:underline font-semibold">ثبت‌نام</a>
+        </p>
+    </div>
+</body>
+</html>
