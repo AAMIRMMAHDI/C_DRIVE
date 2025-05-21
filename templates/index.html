@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>فضای ابری - خانه</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://v1.fontapi.ir/css/Vazir">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <style>
+        * {
+            font-family: 'Vazir', sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #1a1a1a;
+            color: #fff;
+            overflow-x: hidden;
+            height: 100vh;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a8a, #1e1e2f);
+            min-height: 100vh;
+            width: 100%;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            border-radius: 12px;
+        }
+        .glass-button {
+            background: rgba(79, 195, 247, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(79, 195, 247, 0.4);
+            color: #4fc3f7;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeSlideIn 0.3s ease forwards;
+        }
+        .glass-button:hover {
+            background: rgba(79, 195, 247, 0.3);
+            transform: translateY(-2px);
+        }
+        @keyframes fadeSlideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @media (max-width: 640px) {
+            .gradient-bg {
+                padding: 0.6rem;
+            }
+            .glass-button {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <div class="container mx-auto p-6 text-center glass-effect">
+        <h1 class="text-3xl font-bold text-white mb-6">به فضای ابری خوش آمدید</h1>
+        <p class="text-gray-300 mb-6">فایل‌های خود را با امنیت ذخیره و مدیریت کنید.</p>
+        <div class="flex justify-center gap-4">
+            <a href="/login" class="glass-button">ورود</a>
+            <a href="/register" class="glass-button">ثبت‌نام</a>
+        </div>
+    </div>
+    <script>
+        gsap.from(".container", { duration: 1, y: 50, opacity: 0, ease: "power2.out" });
+    </script>
+</body>
+</html>
