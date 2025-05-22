@@ -1,7 +1,3 @@
-"""
-Django settings for cloud_storage project.
-"""
-
 import os
 from pathlib import Path
 
@@ -14,7 +10,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
-    'core',  # اپ core اول میاد تا CustomUser قبل از auth و admin لود بشه
+    'core',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -76,7 +72,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# تنظیم مدل کاربر سفارشی
 AUTH_USER_MODEL = 'core.CustomUser'
 
 LANGUAGE_CODE = 'fa-ir'
@@ -89,8 +84,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-MEDIA_URL = '/uploads/'
-MEDIA_ROOT = BASE_DIR / 'uploads'
+# تنظیمات مربوط به فایل‌های آپلود شده
+MEDIA_URL = '/media/'  # تغییر از /Uploads/ به /media/
+MEDIA_ROOT = BASE_DIR / 'media'  # تغییر از Uploads به media
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

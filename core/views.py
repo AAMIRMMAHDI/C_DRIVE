@@ -138,10 +138,19 @@ def upload(request):
             if user.storage_used + file_size > user.storage_limit:
                 messages.error(request, 'فضای کافی ندارید!')
                 return redirect('dashboard')
-            file_path = os.path.join(settings.MEDIA_ROOT, f'{uuid.uuid4()}_{uploaded_file.name}')
-            with open(file_path, 'wb+') as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
+            # تولید نام فایل با UUID
+            file_name = f"{uuid.uuid4()}_{uploaded_file.name}"
+            file_path = os.path.join(settings.MEDIA_ROOT, file_name)
+            # اطمینان از وجود پوشه media
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # ذخیره فایل
+            try:
+                with open(file_path, 'wb+') as destination:
+                    for chunk in uploaded_file.chunks():
+                        destination.write(chunk)
+            except Exception as e:
+                messages.error(request, f'خطا در ذخیره فایل: {str(e)}')
+                return redirect('dashboard')
             mime_type, _ = mimetypes.guess_type(uploaded_file.name)
             file = File(
                 user=user,
@@ -278,7 +287,7 @@ def preview(request, file_id):
         file = File.objects.get(id=file_id, user=user)
         return JsonResponse({
             'filename': file.original_filename,
-            'url': f'/Uploads/{os.path.basename(file.file_path)}',
+            'url': f'/media/{os.path.basename(file.file_path)}',  # تغییر از /Uploads/ به /media/
             'mime_type': file.mime_type,
         })
     except File.DoesNotExist:
