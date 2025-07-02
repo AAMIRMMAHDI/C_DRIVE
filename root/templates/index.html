@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فضای ابری</title>
+    <link rel="stylesheet" href="https://v1.fontapi.ir/css/Vazir">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Vazir', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #1e1e2f);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .glass-button {
+            background: rgba(79, 195, 247, 0.2);
+            border: 1px solid rgba(79, 195, 247, 0.4);
+            color: #4fc3f7;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .glass-button:hover {
+            background: rgba(79, 195, 247, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-effect text-center">
+        <h1 class="text-3xl font-bold mb-6">به فضای ابری خوش آمدید!</h1>
+        <div class="flex justify-center gap-4">
+            <a href="{% url 'login' %}" class="glass-button">ورود</a>
+            <a href="{% url 'register' %}" class="glass-button">ثبت‌نام</a>
+        </div>
+    </div>
+</body>
+</html>

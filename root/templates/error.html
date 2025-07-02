@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خطا</title>
+    <link rel="stylesheet" href="https://v1.fontapi.ir/css/Vazir">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Vazir', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #1e1e2f);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .glass-button {
+            background: rgba(79, 195, 247, 0.2);
+            border: 1px solid rgba(79, 195, 247, 0.4);
+            color: #4fc3f7;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .glass-button:hover {
+            background: rgba(79, 195, 247, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-effect">
+        <h1 class="text-2xl font-bold mb-4">خطا</h1>
+        <p class="mb-4">{{ message }}</p>
+        <a href="{% url 'index' %}" class="glass-button">بازگشت به صفحه اصلی</a>
+    </div>
+</body>
+</html>

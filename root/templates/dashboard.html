@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="UTF-8">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>داشبورد - فضای ابری</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://v1.fontapi.ir/css/Vazir">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        * {
+            font-family: 'Vazir', sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #0d1b2a;
+            color: #e0e0e0;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #0d1b2a, #1b263b);
+            min-height: 100vh;
+            width: 100%;
+            padding: 0.5rem;
+            flex: 1;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .glass-button {
+            background: linear-gradient(135deg, rgba(64, 196, 255, 0.3), rgba(123, 44, 191, 0.3));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(64, 196, 255, 0.5);
+            color: #e0e0e0;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            font-size: 0.8rem;
+        }
+        .glass-button:hover {
+            background: linear-gradient(135deg, rgba(64, 196, 255, 0.5), rgba(123, 44, 191, 0.5));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .file-card, .folder-card {
+            position: relative;
+            padding: 0.8rem;
+            margin: 0.3rem;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeSlideIn 0.3s ease forwards;
+        }
+        @keyframes fadeSlideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .file-card:hover, .folder-card:hover, .file-card.active, .folder-card.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .file-actions, .folder-actions {
+            display: none;
+            position: absolute;
+            top: 0.4rem;
+            left: 0.4rem;
+            gap: 0.4rem;
+        }
+        .file-card:hover .file-actions, .folder-card:hover .folder-actions, 
+        .file-card.active .file-actions, .folder-card.active .folder-actions {
+            display: flex;
+        }
+        .drag-over {
+            border: 2px dashed #40c4ff;
+            background: rgba(64, 196, 255, 0.15);
+        }
+        .context-menu {
+            display: none;
+            position: absolute;
+            background: rgba(27, 38, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            padding: 0.4rem;
+        }
+        .context-menu div {
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            color: #e0e0e0;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .context-menu div:hover {
+            background: rgba(64, 196, 255, 0.3);
+        }
+        #preview-modal video, #preview-modal img {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 8px;
+        }
+        .modal-content {
+            background: rgba(27, 38, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 1rem;
+            width: 85%;
+            max-width: 280px;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1003;
+        }
+        .modal-content.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .progress-bar {
+            background: rgba(64, 196, 255, 0.2);
+            height: 0.4rem;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar div {
+            background: linear-gradient(90deg, #40c4ff, #7b2cbf);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 70%;
+            max-width: 250px;
+            height: 100%;
+            background: rgba(27, 38, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            transition: right 0.3s ease;
+            z-index: 1002;
+            padding: 1rem;
+        }
+        .sidebar.open {
+            right: 0;
+        }
+        .sidebar-item {
+            padding: 0.6rem 1rem;
+            color: #e0e0e0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .sidebar-item:hover {
+            background: rgba(64, 196, 255, 0.3);
+            border-radius: 8px;
+        }
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: rgba(27, 38, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            z-index: 1001;
+        }
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+        .navbar-center {
+            display: flex !important;
+            align-items: center;
+            gap: 0.5rem;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+        }
+        .navbar-search {
+            position: relative;
+            width: 100%;
+            max-width: 200px;
+            z-index: 5;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(27, 38, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 0.5rem 1rem;
+            z-index: 1001;
+        }
+        @media (min-width: 641px) {
+            .navbar {
+                position: relative;
+                justify-content: space-between;
+                padding: 0.5rem 2rem;
+            }
+            .navbar-left {
+                display: flex !important;
+                gap: 0.5rem;
+                visibility: visible !important;
+                max-width: 200px; /* عرض کمتر */
+                padding-left: 0.5rem; /* فاصله کمتر از چپ */
+                margin-right: 2rem; /* فاصله از بقیه عناصر */
+                z-index: 10;
+            }
+            .navbar-left .header-actions {
+                display: flex !important;
+                gap: 0.5rem;
+                visibility: visible !important;
+            }
+            .navbar-center {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex !important;
+                visibility: visible !important;
+            }
+            .navbar-search {
+                position: absolute;
+                right: 1rem; /* نزدیک لبه راست */
+                max-width: 250px;
+                z-index: 5;
+            }
+            .file-card, .folder-card {
+                padding: 1rem;
+                margin: 0.5rem;
+            }
+            .grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            .sidebar {
+                display: none;
+            }
+            .navbar {
+                flex-wrap: nowrap;
+            }
+        }
+        @media (max-width: 640px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .file-card p, .folder-card p {
+                font-size: 0.85rem;
+            }
+            .file-card, .folder-card {
+                padding: 0.6rem;
+                margin: 0.2rem;
+            }
+            .modal-content {
+                width: 90%;
+                max-width: 260px;
+                padding: 0.8rem;
+            }
+            .glass-button {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.75rem;
+            }
+            .navbar-search {
+                max-width: 100%;
+            }
+            .navbar-center {
+                position: static;
+                transform: none;
+            }
+            .navbar-left .header-actions {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="gradient-bg">
+    <div class="navbar glass-effect">
+        <div class="navbar-left">
+            <h1 class="text-base font-bold text-white">فضای ابری</h1>
+            <button id="sidebar-toggle" class="glass-button md:hidden"><i class="bi bi-list"></i></button>
+            <div class="header-actions md:flex">
+                <button onclick="document.getElementById('file-input').click();" class="glass-button"><i class="bi bi-upload"></i></button>
+                <button onclick="document.getElementById('folder-input').click();" class="glass-button"><i class="bi bi-folder-plus"></i></button>
+                <button onclick="showCreateFolderModal();" class="glass-button"><i class="bi bi-folder-plus"></i></button>
+                <a href="{% url 'logout' %}" class="glass-button"><i class="bi bi-box-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="navbar-center">
+            <a href="https://aamirmmahdi.github.io/C/" class="glass-button"><i class="bi bi-globe"></i></a>
+            <a href="https://www.mediafire.com/file/4h260pbyljzxeh5/C_DRIVER.apk/file" class="glass-button"><i class="bi bi-windows"></i></a>
+            <a href="#" class="glass-button"><i class="bi bi-android2"></i></a>
+        </div>
+        <div class="navbar-search">
+            <form method="get" action="{% url 'search' %}">
+                <input type="text" id="search-input" name="q" value="{{ query|default:'' }}" placeholder="جستجو..." 
+                       class="w-full p-1.5 pr-8 rounded-lg bg-gray-800 text-white focus:outline-none glass-effect">
+                <i class="bi bi-search absolute right-2 top-2 text-gray-400"></i>
+                <input type="hidden" name="folder_id" value="{{ folder_id|default:'' }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_order" value="{{ sort_order }}">
+            </form>
+        </div>
+    </div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-item" onclick="document.getElementById('file-input').click();">
+            <i class="bi bi-upload"></i> آپلود فایل
+        </div>
+        <div class="sidebar-item" onclick="document.getElementById('folder-input').click();">
+            <i class="bi bi-folder-plus"></i> آپلود پوشه
+        </div>
+        <div class="sidebar-item" onclick="showCreateFolderModal();">
+            <i class="bi bi-folder-plus"></i> ایجاد پوشه
+        </div>
+        <div class="sidebar-item">
+            <a href="{% url 'logout' %}" class="flex items-center gap-2"><i class="bi bi-box-arrow-right"></i> خروج</a>
+        </div>
+    </div>
+    <div class="container mx-auto p-3">
+        {% if folder_id %}
+            <div class="mb-3 flex items-center gap-2">
+                <a href="{% if parent_folder_id %}{% url 'dashboard' %}?folder_id={{ parent_folder_id }}{% else %}{% url 'dashboard' %}{% endif %}" 
+                   class="glass-button"><i class="bi bi-arrow-right"></i></a>
+                <span class="text-gray-300 text-sm">پوشه: {{ folder_name|default:'ناشناس' }}</span>
+            </div>
+        {% endif %}
+        <div class="mb-3">
+            <form id="upload-form" method="post" enctype="multipart/form-data" action="{% url 'upload' %}" 
+                  class="glass-effect p-2 text-center rounded-lg"
+                  ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                  ondragleave="this.classList.remove('drag-over');"
+                  ondrop="event.preventDefault(); this.classList.remove('drag-over'); handleDrop(event);">
+                {% csrf_token %}
+                <input type="file" name="file" id="file-input" multiple class="hidden">
+                <input type="file" name="file" id="folder-input" multiple webkitdirectory class="hidden">
+                <input type="hidden" name="folder_id" value="{{ folder_id|default:'' }}">
+                <p class="text-gray-300 text-sm mb-1">فایل‌ها یا پوشه‌ها را بکشید</p>
+                <button type="button" id="upload-button" class="glass-button"><i class="bi bi-upload"></i></button>
+            </form>
+        </div>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-3 p-2 text-center glass-effect {% if message.tags == 'success' %}bg-green-600{% else %}bg-red-600{% endif %} rounded-lg text-white text-sm">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        <div id="search-results" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {% if not folders and not files %}
+                <div class="text-center text-gray-300 p-2 glass-effect rounded-lg">
+                    <i class="bi bi-folder-x text-xl mb-1"></i>
+                    <p class="text-sm">هیچ فایل یا پوشه‌ای وجود ندارد!</p>
+                </div>
+            {% else %}
+                {% for folder in folders %}
+                    <div class="folder-card glass-effect" data-id="{{ folder.id }}" draggable="true" 
+                         ondragstart="dragFolder(event, {{ folder.id }})" ondragover="event.preventDefault();" 
+                         ondrop="dropOnFolder(event, {{ folder.id }})" 
+                         oncontextmenu="showContextMenu(event, {{ folder.id }}, 'folder')"
+                         ontouchstart="handleTouchStart(event, {{ folder.id }}, 'folder')"
+                         ontouchend="handleTouchEnd(event)">
+                        <a href="{% url 'dashboard' %}?folder_id={{ folder.id }}" class="flex flex-col items-center">
+                            <i class="bi bi-folder-fill text-yellow-400 text-2xl mb-1"></i>
+                            <p class="font-semibold text-white text-sm">{{ folder.name|truncatechars:15 }}</p>
+                        </a>
+                        <div class="folder-actions flex">
+                            <button onclick="showRenameFolderModal({{ folder.id }}, '{{ folder.name|escapejs }}')" class="text-purple-400 hover:text-purple-600"><i class="bi bi-pencil"></i></button>
+                            <a href="{% url 'delete_folder' folder.id %}" class="text-red-400 hover:text-red-600"><i class="bi bi-trash"></i></a>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% for file in files %}
+                    <div class="file-card glass-effect" data-id="{{ file.id }}" draggable="true" 
+                         ondragstart="dragFile(event, {{ file.id }})" 
+                         oncontextmenu="showContextMenu(event, {{ file.id }}, 'file')"
+                         ontouchstart="handleTouchStart(event, {{ file.id }}, 'file')"
+                         ontouchend="handleTouchEnd(event)">
+                        <div class="flex flex-col items-center">
+                            <i class="bi {% if file.original_filename|lower|slice:'-4:' in '.jpg,.jpeg,.png,.gif' %}bi-image{% elif file.original_filename|lower|slice:'-4:' in '.mp4,.webm' %}bi-file-play{% else %}bi-file-earmark{% endif %} text-blue-400 text-2xl mb-1"></i>
+                            <p class="font-semibold text-white text-sm">{{ file.original_filename|truncatechars:15 }}</p>
+                        </div>
+                        <div class="file-actions flex">
+                            <a href="{% url 'download_file' file.id %}" class="text-blue-400 hover:text-blue-600"><i class="bi bi-download"></i></a>
+                            <button onclick="previewFile({{ file.id }})" class="text-green-400 hover:text-green-600"><i class="bi bi-eye"></i></button>
+                            <button onclick="shareFile({{ file.id }})" class="text-yellow-400 hover:text-yellow-600"><i class="bi bi-share"></i></button>
+                            <button onclick="showRenameModal({{ file.id }}, '{{ file.original_filename|escapejs }}', '{{ folder_id|default:'' }}')" class="text-purple-400 hover:text-purple-600"><i class="bi bi-pencil"></i></button>
+                            <a href="{% url 'delete_file' file.id %}" class="text-red-400 hover:text-red-600"><i class="bi bi-trash"></i></a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div id="create-folder-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-30">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <h3 class="text-sm font-bold mb-2 text-white"><i class="bi bi-folder-plus me-1"></i> ایجاد پوشه</h3>
+                <form id="create-folder-form" method="post" action="{% url 'create_folder' %}" onsubmit="handleCreateFolderSubmit(event)">
+                    {% csrf_token %}
+                    <input type="hidden" name="parent_folder_id" value="{{ folder_id|default:'' }}">
+                    <input type="text" name="folder_name" id="create-folder-name" class="w-full p-1.5 rounded-lg bg-gray-800 text-white glass-effect mb-2" required>
+                    <button type="submit" class="glass-button"><i class="bi bi-check-circle"></i></button>
+                    <button type="button" onclick="hideCreateFolderModal()" class="glass-button bg-red-600 hover:bg-red-700"><i class="bi bi-x-circle"></i></button>
+                </form>
+            </div>
+        </div>
+        <div id="rename-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-30">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <h3 class="text-sm font-bold mb-2 text-white"><i class="bi bi-pencil-square me-1"></i> تغییر نام فایل</h3>
+                <form id="rename-form" method="post" action="" onsubmit="handleRenameSubmit(event)">
+                    {% csrf_token %}
+                    <input type="hidden" name="file_id" id="rename-file-id">
+                    <input type="hidden" name="folder_id" id="rename-folder-id">
+                    <input type="text" name="new_name" id="rename-file-name" class="w-full p-1.5 rounded-lg bg-gray-800 text-white glass-effect mb-2" required>
+                    <button type="submit" class="glass-button"><i class="bi bi-check-circle"></i></button>
+                    <button type="button" onclick="hideRenameModal()" class="glass-button bg-red-600 hover:bg-red-700"><i class="bi bi-x-circle"></i></button>
+                </form>
+            </div>
+        </div>
+        <div id="rename-folder-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-30">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <h3 class="text-sm font-bold mb-2 text-white"><i class="bi bi-folder me-1"></i> تغییر نام پوشه</h3>
+                <form id="rename-folder-form" method="post" action="" onsubmit="handleRenameSubmit(event)">
+                    {% csrf_token %}
+                    <input type="hidden" name="folder_id" id="rename-folder-id">
+                    <input type="text" name="new_name" id="rename-folder-name" class="w-full p-1.5 rounded-lg bg-gray-800 text-white glass-effect mb-2" required>
+                    <button type="submit" class="glass-button"><i class="bi bi-check-circle"></i></button>
+                    <button type="button" onclick="hideRenameFolderModal()" class="glass-button bg-red-600 hover:bg-red-700"><i class="bi bi-x-circle"></i></button>
+                </form>
+            </div>
+        </div>
+        <div id="preview-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-30">
+            <div class="modal-content relative" onclick="event.stopPropagation()">
+                <button onclick="hidePreviewModal()" class="absolute top-1 left-1 text-red-400 hover:text-red-600"><i class="bi bi-x-lg"></i></button>
+                <h3 class="text-sm font-bold mb-2 text-white" id="preview-filename"></h3>
+                <div id="preview-content"></div>
+            </div>
+        </div>
+        <div id="context-menu" class="context-menu">
+            <div onclick="contextAction('download')"><i class="bi bi-download"></i> دانلود</div>
+            <div onclick="contextAction('preview')"><i class="bi bi-eye"></i> پیش‌نمایش</div>
+            <div onclick="contextAction('share')"><i class="bi bi-share"></i> اشتراک‌گذاری</div>
+            <div onclick="contextAction('rename')"><i class="bi bi-pencil"></i> تغییر نام</div>
+            <div onclick="contextAction('delete')"><i class="bi bi-trash"></i> حذف</div>
+        </div>
+    </div>
+    <footer class="footer glass-effect">
+        <p class="text-gray-300 text-sm">فضای استفاده‌شده: {{ storage_used|floatformat:2 }} مگابایت از {{ storage_limit|floatformat:2 }} مگابایت</p>
+        <div class="progress-bar mt-1">
+            <div style="width: {{ storage_percentage|floatformat:2 }}%"></div>
+        </div>
+    </footer>
+    <script>
+        let currentFileId = null;
+        let currentType = null;
+        let touchTimer = null;
+        const LONG_PRESS_DURATION = 500;
+
+        gsap.from(".navbar, .file-card, .folder-card, .footer", { duration: 0.6, y: 20, opacity: 0, stagger: 0.05, ease: "power2.out" });
+        gsap.from(".progress-bar div", { duration: 0.7, width: 0, ease: "power2.out", delay: 0.2 });
+
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+        const folderInput = document.getElementById('folder-input');
+        const uploadButton = document.getElementById('upload-button');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const contextMenu = document.getElementById('context-menu');
+        const renameModal = document.getElementById('rename-modal');
+        const renameFolderModal = document.getElementById('rename-folder-modal');
+        const createFolderModal = document.getElementById('create-folder-modal');
+        const previewModal = document.getElementById('preview-modal');
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!sidebarToggle.contains(e.target) && !sidebar.contains(e.target)) {
+                sidebar.classList.remove('open');
+            }
+            if (!contextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                uploadForm.submit();
+            } else {
+                alert('هیچ فایلی انتخاب نشده است!');
+            }
+        });
+
+        folderInput.addEventListener('change', () => {
+            if (folderInput.files.length > 0) {
+                uploadForm.submit();
+            } else {
+                alert('هیچ پوشه‌ای انتخاب نشده است!');
+            }
+        });
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            uploadForm.classList.remove('drag-over');
+            const files = event.dataTransfer.files;
+            if (files.length === 0) {
+                alert('هیچ فایلی انتخاب نشده است!');
+                return;
+            }
+            fileInput.files = files;
+            uploadForm.submit();
+        }
+
+        function dragFile(event, fileId) {
+            event.dataTransfer.setData('file_id', fileId);
+        }
+
+        function dragFolder(event, folderId) {
+            event.dataTransfer.setData('folder_id', folderId);
+        }
+
+        async function dropOnFolder(event, folderId) {
+            event.preventDefault();
+            const fileId = event.dataTransfer.getData('file_id');
+            if (fileId) {
+                try {
+                    const response = await fetch(`/move_file/${fileId}/${folderId}/`, {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken(),
+                        },
+                    });
+                    const data = await response.json();
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        location.reload();
+                    }
+                } catch (error) {
+                    alert('خطایی رخ داد!');
+                }
+            }
+        }
+
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+
+        function showContextMenu(event, id, type) {
+            event.preventDefault();
+            currentFileId = id;
+            currentType = type;
+            contextMenu.style.display = 'block';
+            contextMenu.style.top = `${event.clientY}px`;
+            contextMenu.style.left = `${event.clientX}px`;
+            if (type === 'folder') {
+                contextMenu.children[0].style.display = 'none';
+                contextMenu.children[1].style.display = 'none';
+                contextMenu.children[2].style.display = 'none';
+            } else {
+                contextMenu.children[0].style.display = 'block';
+                contextMenu.children[1].style.display = 'block';
+                contextMenu.children[2].style.display = 'block';
+            }
+        }
+
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+            currentFileId = null;
+            currentType = null;
+        }
+
+        function handleTouchStart(event, id, type) {
+            touchTimer = setTimeout(() => {
+                showContextMenu(event, id, type);
+            }, LONG_PRESS_DURATION);
+        }
+
+        function handleTouchEnd(event) {
+            clearTimeout(touchTimer);
+        }
+
+        async function contextAction(action) {
+            if (!currentFileId || !currentType) return;
+            if (action === 'download' && currentType === 'file') {
+                window.location.href = `/download_file/${currentFileId}/`;
+            } else if (action === 'preview' && currentType === 'file') {
+                previewFile(currentFileId);
+            } else if (action === 'share' && currentType === 'file') {
+                shareFile(currentFileId);
+            } else if (action === 'rename') {
+                if (currentType === 'file') {
+                    const fileCard = document.querySelector(`.file-card[data-id="${currentFileId}"]`);
+                    const fileName = fileCard.querySelector('p.font-semibold').textContent;
+                    showRenameModal(currentFileId, fileName, '{{ folder_id|default:'' }}');
+                } else {
+                    const folderCard = document.querySelector(`.folder-card[data-id="${currentFileId}"]`);
+                    const folderName = folderCard.querySelector('p.font-semibold').textContent;
+                    showRenameFolderModal(currentFileId, folderName);
+                }
+            } else if (action === 'delete') {
+                if (confirm('آیا مطمئن هستید که می‌خواهید حذف کنید؟')) {
+                    window.location.href = currentType === 'file' ? `/delete/${currentFileId}/` : `/delete_folder/${currentFileId}/`;
+                }
+            }
+            hideContextMenu();
+        }
+
+        function showRenameModal(fileId, fileName, folderId) {
+            renameModal.classList.remove('hidden');
+            document.getElementById('rename-file-id').value = fileId;
+            document.getElementById('rename-file-name').value = fileName;
+            document.getElementById('rename-folder-id').value = folderId;
+            document.getElementById('rename-form').action = `/rename/${fileId}/`;
+            setTimeout(() => {
+                renameModal.querySelector('.modal-content').classList.add('show');
+            }, 10);
+        }
+
+        function hideRenameModal() {
+            renameModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                renameModal.classList.add('hidden');
+            }, 300);
+        }
+
+        function showRenameFolderModal(folderId, folderName) {
+            renameFolderModal.classList.remove('hidden');
+            document.getElementById('rename-folder-id').value = folderId;
+            document.getElementById('rename-folder-name').value = folderName;
+            document.getElementById('rename-folder-form').action = `/rename_folder/${folderId}/`;
+            setTimeout(() => {
+                renameFolderModal.querySelector('.modal-content').classList.add('show');
+            }, 10);
+        }
+
+        function hideRenameFolderModal() {
+            renameFolderModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                renameFolderModal.classList.add('hidden');
+            }, 300);
+        }
+
+        function showCreateFolderModal() {
+            createFolderModal.classList.remove('hidden');
+            document.getElementById('create-folder-name').value = '';
+            setTimeout(() => {
+                createFolderModal.querySelector('.modal-content').classList.add('show');
+            }, 10);
+        }
+
+        function hideCreateFolderModal() {
+            createFolderModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                createFolderModal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function previewFile(fileId) {
+            try {
+                const response = await fetch(`/preview/${fileId}/`);
+                const data = await response.json();
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                previewModal.classList.remove('hidden');
+                document.getElementById('preview-filename').textContent = data.filename;
+                const previewContent = document.getElementById('preview-content');
+                previewContent.innerHTML = '';
+                if (data.mime_type.startsWith('image/')) {
+                    previewContent.innerHTML = `<img src="${data.url}" alt="${data.filename}">`;
+                } else if (data.mime_type.startsWith('video/')) {
+                    previewContent.innerHTML = `<video controls><source src="${data.url}" type="${data.mime_type}"></video>`;
+                } else {
+                    previewContent.innerHTML = '<p>پیش‌نمایش برای این نوع فایل در دسترس نیست.</p>';
+                }
+                setTimeout(() => {
+                    previewModal.querySelector('.modal-content').classList.add('show');
+                }, 10);
+            } catch (error) {
+                alert('خطایی رخ داد!');
+            }
+        }
+
+        function hidePreviewModal() {
+            previewModal.querySelector('.modal-content').classList.remove('show');
+            setTimeout(() => {
+                previewModal.classList.add('hidden');
+                document.getElementById('preview-content').innerHTML = '';
+            }, 300);
+        }
+
+        async function shareFile(fileId) {
+            try {
+                const response = await fetch(`/share/${fileId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                });
+                const data = await response.json();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    prompt('لینک اشتراک:', data.share_link);
+                }
+            } catch (error) {
+                alert('خطایی رخ داد!');
+            }
+        }
+
+        function handleRenameSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                },
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('خطایی رخ داد!');
+                }
+            }).catch(() => {
+                alert('خطایی رخ داد!');
+            });
+        }
+
+        function handleCreateFolderSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                },
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('خطایی رخ داد!');
+                }
+            }).catch(() => {
+                alert('خطایی رخ داد!');
+            });
+        }
+
+        document.getElementById('rename-folder-form').addEventListener('submit', handleRenameSubmit);
+        document.getElementById('create-folder-form').addEventListener('submit', handleCreateFolderSubmit);
+
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                const query = searchInput.value;
+                const folderId = '{{ folder_id|default:"" }}';
+                try {
+                    const response = await fetch(`{% url 'search' %}?q=${encodeURIComponent(query)}&folder_id=${folderId}&sort_by={{ sort_by }}&sort_order=${encodeURIComponent(sort_order)}`);
+                    const data = await response.text();
+                    searchResults.innerHTML = data;
+                    gsap.from(".file-card, .folder-card", { duration: 0.5, y: 20, opacity: 0, stagger: 0.05, ease: "power2.out" });
+                } catch (error) {
+                    searchResults.innerHTML = '<div class="container text-center text-gray-400 p-3 glass-effect rounded-lg">خطایی رخ داد!</div>';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
